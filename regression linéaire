@@ -1,0 +1,113 @@
+z=read.csv("C:/Users/Trading/Documents/BE/Données R/TABLEAUDONNEES.csv", header=TRUE,sep=";",dec=".")
+fix(z)
+cor(z) #PIB est la variable la plus corrélé avec EURDOL (0.84)
+
+  #Ajustement du modèle de régression linéaire simple : EURDOL~PIB
+fit0=lm(EURDOL~PIB,data=z) 
+summary(fit0) #EURDOL = 7.84e-07*PIB-0.165
+confint(fit0) 
+plot(z$PIB,z$EURDOL)
+abline(a = fit0$coefficients[1],b=fit0$coefficients[2],col='red')
+plot(fit0) 
+
+
+  #Essayons de prédire l'EURDOL sur la dernière année avec ce que nous avons fait avant
+fit168=lm(EURDOL~ PIB,data=z[-168,]) #Ajustement après avoir enlevé la dernière année  
+pred168=predict(fit168,z[168,],interval="prediction")
+conf168=predict(fit168,z[168,],interval="confidence")
+pred168 #La régression linéaire prévoit un EURDOL de 1.4308 pour le 168ème mois. 
+        #Ce qui représente un écart de 6%. 
+conf168
+#le modèle n'est pas assez précis car 1.32 n'est pas dans l'intervalle de confiance
+
+
+
+library(FactoMineR)
+PCA(z) #L'ACP nous révèle la non-corrélation de SBF+E3M+EONIA+TXMARGE+CHOM+TEMPARTIEL
+PCA(z)$var$cor #à commenter plus tard
+z1=z[,-c(3,15,16,19,22,24)]
+fix(z1)#Nouveau tableau sans SBF+E3M+EONIA+TXMARGE+CHOM+TEMPARTIEL
+PCA(z1)#On réessaye le modèle du cours
+
+
+
+  #Nous allons désormais réaliser une sélection de modèle en utilisant la méthode "pas à pas" avec élimination 
+  #en arrière qui est plus adaptée car nous avons beaucoup de variables explicatives.
+fit=lm(EURDOL~.,data=z)
+
+  for (i in 1:10) { #On choisit d'enlever les dix variables qui ont les p-values les plus hautes 
+    l=length(summary(fit)$coefficients[,4]) 
+    b1=which(summary(fit)$coefficients[1:(l-i+1),4]==max(summary(fit)$coefficients[2:(l-i+1),4]))
+    b2=as.vector(b1)
+    z=z[,-b2] #On enlève du tableau la variable avec la plus grande p-value
+    fit=lm(EURDOL~.,data=z)
+    print(b2) #Juste pour vérifier que le code marche bien
+    }
+
+
+  #On élabore un modèle par rapport aux variables ayant les p-values les plus faibles
+summary(fit)
+fit1=lm(EURDOL~TXINVEST+ENDENT+DEFAILLENT+BRENT+SBF+CHOM+TEMPARTIEL,data=z) 
+summary(fit1) #R²=0.84
+
+  #Essayons de prédire de nouveau l'EURDOL sur la dernière année avec notre nouveau modèle :
+Newfit168=lm(EURDOL~ TXINVEST+ENDENT+DEFAILLENT+BRENT+SBF+CHOM+TEMPARTIEL,data=z[-168,])  
+Newpred168=predict(Newfit168,z[168,],interval="prediction")
+Newconf168=predict(Newfit168,z[168,],interval="confidence")
+Newpred168 #La prédiction pour le 168ème mois est 1.2576 et appartient à l'intervalle de confiance
+Newconf168 #L'erreur est désormais plus faible, notre modèle se rapproche mieux de la réalité 
+
+  #Rajoutons ENDMEN au modèle car il peut être important (p-value acceptable)
+  #Utilisons regsubsets pour affiner encore notre modèle
+library(leaps) 
+zard=regsubsets(EURDOL~TXINVEST+ENDENT+DEFAILLENT+BRENT+SBF+CHOM+TEMPARTIEL+ENDMEN,data=z,nvmax=8)
+plot(zard,scale="adjr2") #A partir de là on choisit le modèle que l'on veut en fonction du nombre de variables
+                         #explicatives que l'on désire. 
+
+  #Exemple du modèle avec 7 variables explicatives : EURDOL~ENDENT+DEFAILLENT+BRENT+SBF+CHOM+TEMPARTIEL+ENDMEN
+finalFit=lm(EURDOL~ENDENT+DEFAILLENT+BRENT+SBF+CHOM+TEMPARTIEL+ENDMEN,data=z)
+summary(finalFit) #R²=0.92
+
+
+  #Regardons si le modèle est validé 
+n=168
+ypred=rep(0,n)   #valeur predite pour le modèle restreint
+apred=rep(0,n)   #valeur min IP
+bpred=rep(0,n)   #valeur max IP
+ypredc=rep(0,n)
+apredc=rep(0,n)
+bpredc=rep(0,n)
+
+  for (i in 1:n){
+    fit=lm(EURDOL~ENDENT+DEFAILLENT+BRENT+SBF+CHOM+TEMPARTIEL+ENDMEN, data=z[-i,])
+     temp=predict(fit, z[i,],interval = "prediction",level = 0.95)  
+     ypred[i]=temp[1]
+     apred[i]=temp[2]
+     bpred[i]=temp[3]
+  
+    fit=lm(EURDOL~., data=z[-i,])
+    temp=predict(fit, z[i,],interval = "prediction")
+    ypredc[i]=temp[1]
+    apredc[i]=temp[2]
+    bpredc[i]=temp[3]
+  }
+
+sum((z$EURDOL-ypred)^2)/n  #EQM modele selectionne
+sum((z$EURDOL-ypredc)^2)/n  #EQM modele complet : moins bon!
+
+sum( z$EURDOL>=apred & z$EURDOL<=bpred)/n  #0.964
+sum( z$EURDOL>=apredc & z$EURDOL<=bpredc)/n #0.958
+
+  #Regardons maintenant l'écart en pourcentage entre notre modèle et la réalité 
+c=as.vector(ypred)
+A=((c-z[,1])/z[,1])*100
+plot(A,type='l')
+abline(h=c(-5,5),col='red')
+
+anova(finalFit,fit0) #je sais pas ce que ça veut dire LOOOOOLE 
+
+  #Regardons désormais une sélection de modèle avec le critère du plus petit AIC.
+z=read.csv("C:/Users/Trading/Documents/BE/Données R/TABLEAUDONNEES.csv", header=TRUE,sep=";",dec=".")
+step(lm(EURDOL~.,data=z),direction="backward")
+#Ce modèle nous donne : EURDOL~TXINVEST+INVESTENT+ENDENT+ENDMEN+DEFAILLENT+BRENT+SBF+CHOM
+
