@@ -1,0 +1,69 @@
+texte="Nous avions deux sacs d'herbes, soixante-quinze boulettes de mescaline, cinq feuilles d'acide de buvard très puissant, une salière à moitié pleine de cocaine et une galaxie entière de granules multicolores, des tranquilisants, des gazs hilarants..."
+texte="We had two bags of grass, seventy-five pellets of mescaline, five sheets of high-powered blotter acid, a salt shaker half-full of cocaine and a whole galaxy of multicolored uppers,downers screamers, laughers..."
+
+
+nbapp=function(texte){
+texte=toupper(texte) # met en majuscule le texte
+texte=chartr("ÀÂÇÉÈÊËÏÎÔÙ", "AACEEEEIIOU",texte) # change à en a, è en e, etc..
+v1=LETTERS[1:26] # v1 contient toutes les lettres triées de l'alphabet
+v2=rep(0,26) # vecteur de 26 zéros
+
+for (j in 1:26){ # on va de 1 à 26 
+	textemod=texte 
+	# regexpr("a","bracadabra")[1]=3 , donne la 1ère position d'une lettre dans un texte, renvoie -1 si la lettre n'est pas présente.
+	while (( regexpr(v1[j],textemod)[1] )>0){ # tant que la lettre existe dans le texte
+		i=regexpr(v1[j],textemod)[1] # 1ère position de la lettre
+		v2[j]=v2[j]+1 # compte le nombre de fois que cette lettre apparait
+		textemod=substr(textemod,i+1,nchar(textemod)) #supprime toutes les lettres précédentes à cette lettre
+	}
+}
+
+freq = rep(0,26)
+for (i in 1:length(texte)) {
+		for(j in 1:26) {
+		if (texte[[i]] == LETTERS[j]) {v2[j] = v2[j] + 1}
+		freq[j] = round(( v2[j] / sum(v2) ) * 100,2) # calcul de la frequence
+		}
+	}
+
+x=data.frame(Lettre=v1,Nombre=v2)
+v3=c(9.42,1.02,2.64,3.39,15.87,0.95,1.04,0.77,8.41,0.89,0.00,5.34,3.24,7.15,5.14,2.86,1.06,6.46,7.90,7.26,6.24,2.15,0.00,0.30,0.24,0.32)
+v4=c(8.08,1.67,3.18,3.99,12.56,2.17,1.80,5.27,7.24,0.14,0.63,4.04,2.60,7.38,7.47,1.91,0.09,6.42,6.59,9.15,2.79,1.00,1.89,0.21,1.65,0.07)
+x=data.frame(Lettre=v1,Nombre=v2,Frequence_Texte = freq, Français=v3,Anglais=v4)
+return(x)
+}
+
+nbapp(texte)
+
+langue=function(texte){
+N=nchar(texte)
+Df=sum(((N*nbapp(texte)[,3]-N*nbapp(texte)[,4])^2) /(N*nbapp(texte)[,4]),na.rm=T) #calcul de la distance chi2 fr
+Da=sum(((N*nbapp(texte)[,3]-N*nbapp(texte)[,5])^2) /(N*nbapp(texte)[,5]),na.rm=T) # --- anglaise
+if (Da>=Df){return('Le texte semble être en français.')}
+else {return('Le texte semble être en anglais.')}
+}
+
+langue(texte)
+
+
+	N=nchar(texte)
+	Dfr=sum(((N*nbapp(texte)[,3]-N*nbapp(texte)[,4])^2) /(N*nbapp(texte)[,4]),na.rm=T)
+	Dfr
+	a=c(0,1,2,3)
+	a[2]
+	
+	Ensemble_De_Texte = c("bonjour","hello") 
+	chi = rep(0,length(Ensemble_De_Texte))
+	for(i in 1 : length(Ensemble_De_Texte)) {
+	N = rep(0,length(Ensemble_De_Texte))
+	N[i] = sum(nbapp(Ensemble_De_Texte[i])[,2])
+	chi[i] = sum(((N*nbapp(Ensemble_De_Texte[i])[,3]-N*nbapp(Ensemble_De_Texte[i])[,4])^2) /(N*nbapp(Ensemble_De_Texte[i])[,4]),na.rm=T)
+	}
+	q95f=quantile(chi,0.95)
+
+	if (Dfr < q95f) {cat('Il est vraisemblable que le texte soit francais')}
+	if (Dfr >= q95f) {cat('Il est vraisemblable que le texte ne soit pas francais')}
+	if (Dfr < q95f && Dan > q95a) {cat('Il est vraisemblable que le texte soit francais')}
+	if (Dfr > q95f && Dan < q95a) {cat('Il est vraisemblable que le texte soit anglais')}
+	if (Dfr < q95f && Dan < q95a) {cat('Le texte peut être de langue francaise ou anglaise')}
+	if (Dfr > q95f && Dan > q95a) {cat('Le texte n\'est ni de langue francaise ni de langue anglaise')}
