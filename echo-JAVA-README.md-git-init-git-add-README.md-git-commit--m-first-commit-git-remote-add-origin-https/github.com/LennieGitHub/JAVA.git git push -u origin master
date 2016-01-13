@@ -1,0 +1,58 @@
+import java.util.Scanner;
+
+public class sdz {
+
+	public static void main(String[] args) {
+		// Notre objet scanner 
+		Scanner sc = new Scanner(System.in);
+		
+		// Initialisation des variables
+		double aConvertir, convertit=0;
+		char reponse = ' ', mode = ' ';
+		
+		System.out.println("CONVERTISSEUR CELISUS/FARENHEIT");
+		System.out.println("-------------------------------");
+		
+		do
+		{
+		do {
+		System.out.println("Choisir le mode de conversion");
+		System.out.println("1 - C -> F");
+		System.out.println("2 - F -> C");
+		mode = sc.nextLine().charAt(0);
+		if (mode != '1' && mode != '2')
+			System.out.println("Error 404");
+		}while (mode != '1' && mode != '2');
+		
+		System.out.println("Température à convertir : ");
+		aConvertir = sc.nextDouble();
+		sc.nextLine();
+		
+		if (mode == '1')
+		{
+			convertit = ((9.0/5.0)*aConvertir)+32;
+			System.out.println(aConvertir + "°C correspond à : ");
+			System.out.println(arrondi(convertit,2) + "°F.");
+		}
+		else
+		{
+			convertit = ((aConvertir - 32)*5)/9;
+			System.out.println(aConvertir + " °F correspond à : ");
+			System.out.println(arrondi(convertit,2)+ " °C.");
+		}
+		
+		// On propose désormais à l'utilisateur de recommencer s'il le souhaite
+		do
+		{
+			System.out.println("Voulez-vous refaire une conversion ?");
+			reponse = sc.nextLine().charAt(0);
+		}while (reponse != 'o' && reponse != 'n');
+		}while (reponse == 'o');
+		
+	}
+	
+	public static double arrondi(double A, int B) 
+	{
+		return (double) ( (int) (A * Math.pow(10, B) + .5)) / Math.pow(10, B);
+	}
+}
