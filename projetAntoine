@@ -1,0 +1,214 @@
+global_merging = function(chemin="path") {
+  setwd(chemin) 
+  NYSE.files.list=list.files()
+  for (NYSE.files in NYSE.files.list){
+    setwd(paste0(chemin,"/",NYSE.files))
+    file_list <- list.files()
+    for (file in file_list){
+      if (!exists("dataset")){
+        dataset <- read.csv(file, header=TRUE, sep=",")
+      }
+      
+      if (exists("dataset")){
+        temp_dataset <-read.csv(file, header=TRUE, sep=",")
+        dataset<-rbind.data.frame(dataset, temp_dataset)
+        rm(temp_dataset)
+      }
+    }
+    rm(file_list)
+    sort.dataset=dataset[order(dataset$Symbol), ]
+    if (sort.dataset$Date[1]==sort.dataset$Date[2]) {sort.dataset=sort.dataset[-1,]}
+    write.csv(sort.dataset,paste0("C:/Users/lcohe/Documents/benetinTechnologies/merging/",NYSE.files,'.csv'))
+    rm(dataset)
+    rm(sort.dataset)
+  }
+}
+?edit
+edit(source)
+global_merging("C:/Users/lcohe/Documents/benetinTechnologies/NYSE")
+global_merging("C:/Users/lcohe/Documents/benetinTechnologies/NASDAQ")
+
+
+#On récupère le nom des stocks que l'on va suivre & comparer à l'aide de dataset1 
+dataset1=read.csv("C:/Users/lcohe/Documents/benetinTechnologies/ATTRIBUTE_CLOSE.csv", header=TRUE, sep=",")
+stock.names=names(dataset1)[-1]
+followed.stocks=vector("character",length(stock.names))
+j=1 
+for (stocks in stock.names){
+  stocks.gsub=gsub("US.Equity.*$", "", stocks)
+  followed.stocks[j]=substr(stocks.gsub,1,nchar(stocks.gsub)-1)
+  j=j+1
+  rm(stocks.gsub)
+}
+setwd("C:/Users/lcohe//Documents/benetinTechnologies/dataset2")
+lapply(1:length(followed.stocks), function(i) dir.create(followed.stocks[i], recursive=FALSE)) #On créé 1 dossier par stock suivi  dans le dossier dataset2
+
+
+#On charge notre .csv merger à partir des données journalières 
+setwd("C:/Users/lcohe/Documents/benetinTechnologies/merging")
+merging.list.NYSE_NASDAQ=list.files()
+for (merging.list in merging.list.NYSE_NASDAQ){
+  merged.data=read.csv(paste0("C:/Users/lcohe/Documents/benetinTechnologies/merging/",merging.list), header=TRUE, sep=",")
+  year=merging.list
+  type=gsub("_.*$", "", merging.list)
+  year=gsub(type,"",year)
+  year=gsub(".csv", "", year)
+  year=gsub("_", "", year)
+  year=as.numeric(year)
+  for (stocks in followed.stocks){
+    m=which(as.character(merged.data$Symbol)==stocks)
+    if (length(m)>1) {
+      stock.XXX=merged.data[m,] #penser à supprimer la première ligne du fichier qui est un doublon de la deuxième
+      p1=paste0("C:/Users/lcohe/Documents/benetinTechnologies/dataset2/",stocks)
+      p2=paste0(p1,"/")
+      p3=paste0(p2,year)
+      write.csv(stock.XXX, file=paste0(p3,'.csv'))
+      rm(stock.XXX)
+      rm(p1)
+      rm(p2)
+      rm(p3)
+    }
+  }
+}
+
+
+#n #On a généré 13552 csv qu'il va falloir merger 
+setwd("C:/Users/lcohe/Documents/benetinTechnologies/dataset2")
+dataset2.files.list <- list.files()
+
+for (file2 in dataset2.files.list){
+  # if the merged dataset doesn't exist, create it
+  setwd(paste0("C:/Users/lcohe/Documents/benetinTechnologies/dataset2/",file2))
+  file2_list <- list.files()
+  file2_list=sort(file2_list, decreasing=FALSE)
+  if (length(file2_list)>0) {
+    for (file2bis in file2_list) {
+      if (!exists("dataset2")){
+        dataset2 <- read.csv(file2bis, header=TRUE, sep=",")
+      }
+      
+      # if the merged dataset does exist, append to it
+      if (exists("dataset2")){
+        temp_dataset2 <-read.csv(file2bis, header=TRUE, sep=",")
+        dataset2<-rbind.data.frame(dataset2, temp_dataset2)
+        rm(temp_dataset2)
+      }
+    }
+    dataset2=dataset2[,-(1:3)]
+    write.csv(dataset2,file=paste0("C:/Users/lcohe/Documents/benetinTechnologies/dataset2_merged/",file2,'.csv'))
+    rm(dataset2)
+  }
+}
+
+#On va maintenant créer un nouveau tableau pour chaque action avec les sources 1 et 2 à l'intérieur
+setwd("C:/Users/lcohe/Documents/benetinTechnologies/dataset2_merged")
+dataset2_merged.files.list <- list.files()
+dataset2_merged.files.list=as.character(lapply(1:length(dataset2_merged.files.list), function(i) gsub(".csv", "",dataset2_merged.files.list[i])))
+
+OPEN=read.csv("C:/Users/lcohe/Documents/benetinTechnologies/ATTRIBUTE_OPEN.csv", header=TRUE, sep=",")
+CLOSE=read.csv("C:/Users/lcohe/Documents/benetinTechnologies/ATTRIBUTE_CLOSE.csv", header=TRUE, sep=",")
+HIGH=read.csv("C:/Users/lcohe/Documents/benetinTechnologies/ATTRIBUTE_HIGH.csv", header=TRUE, sep=",")
+LOW=read.csv("C:/Users/lcohe/Documents/benetinTechnologies/ATTRIBUTE_LOW.csv", header=TRUE, sep=",")
+VOLUME=read.csv("C:/Users/lcohe/Documents/benetinTechnologies/ATTRIBUTE_VOLUME.csv", header=TRUE, sep=",")
+
+colnames(OPEN)[2:length(colnames(OPEN))]=followed.stocks
+colnames(CLOSE)[2:length(colnames(OPEN))]=followed.stocks
+colnames(HIGH)[2:length(colnames(OPEN))]=followed.stocks
+colnames(LOW)[2:length(colnames(OPEN))]=followed.stocks
+colnames(VOLUME)[2:length(colnames(OPEN))]=followed.stocks
+
+date_close=CLOSE$Date
+date_close=gsub("/01/","-Jan-",date_close)
+date_close=gsub("/02/","-Feb-",date_close)
+date_close=gsub("/03/","-Mar-",date_close)
+date_close=gsub("/04/","-Apr-",date_close)
+date_close=gsub("/05/","-May-",date_close)
+date_close=gsub("/06/","-Jun-",date_close)
+date_close=gsub("/07/","-Jul-",date_close)
+date_close=gsub("/08/","-Aug-",date_close)
+date_close=gsub("/09/","-Sep-",date_close)
+date_close=gsub("/10/","-Oct-",date_close)
+date_close=gsub("/11/","-Nov-",date_close)
+date_close=gsub("/12/","-Dec-",date_close)
+
+date_close=gsub("-15","-2015", date_close)
+date_close=gsub("-14","-2014", date_close)
+date_close=gsub("-13","-2013", date_close)
+date_close=gsub("-12","-2012", date_close)
+date_close=gsub("-11","-2011", date_close)
+date_close=gsub("-10","-2010", date_close)
+date_close=gsub("-09","-2009", date_close)
+date_close=gsub("-08","-2008", date_close)
+date_close=gsub("-07","-2007", date_close)
+date_close=gsub("-06","-2006", date_close)
+date_close=gsub("-05","-2005", date_close)
+date_close=gsub("-04","-2004", date_close)
+date_close=gsub("-03","-2003", date_close)
+date_close=gsub("-02","-2002", date_close)
+date_close=gsub("-01","-2001", date_close)
+date_close=gsub("-00","-2000", date_close)
+date_close=gsub("-99","-1999", date_close)
+date_close=gsub("-98","-1998", date_close)
+date_close=gsub("-97","-1997", date_close)
+date_close=gsub("-96","-1996", date_close)
+date_close=gsub("-95","-1995", date_close)
+date_close=gsub("-94","-1994", date_close)
+date_close=gsub("-93","-1993", date_close)
+
+
+
+CLOSE$Date=date_close
+OPEN$Date=date_close
+HIGH$Date=date_close
+LOW$Date=date_close
+VOLUME$Date=date_close
+
+for (dataset2_merged in dataset2_merged.files.list) {
+  dataset2_temporay=read.csv(paste0("C:/Users/lcohe/Documents/benetinTechnologies/dataset2_merged/",dataset2_merged,'.csv'), header=TRUE, sep=",")
+  same.date=lapply(1:length(dataset2_temporay$Date), function(i) which(dataset2_temporay$Date[i]==OPEN$Date))
+  same.date=as.numeric(na.omit(same.date))
+  l=length(same.date) #Nombre de date en commun
+  l2=which(dataset2_merged==followed.stocks)
+  newTable=array("NA",c(l,18))
+  newTable[1:l,1]=as.numeric(as.character(OPEN[same.date,l2+1]))
+  newTable[1:l,2]=dataset2_temporay[1:l,3]
+  newTable[1:l,4]=as.numeric(as.character(CLOSE[same.date,l2+1]))
+  newTable[1:l,5]=dataset2_temporay[1:l,6]
+  newTable[1:l,7]=as.numeric(as.character(HIGH[same.date,l2+1]))
+  newTable[1:l,8]=dataset2_temporay[1:l,4]
+  newTable[1:l,10]=as.numeric(as.character(LOW[same.date,l2+1]))
+  newTable[1:l,11]=dataset2_temporay[1:l,5]
+  newTable[1:l,13]=as.numeric(as.character(VOLUME[same.date,l2+1]))
+  newTable[1:l,14]=dataset2_temporay[1:l,7]
+  newTable=cbind(as.character(dataset2_temporay$Date),newTable)
+  colnames(newTable)=c("Date","Open s1","Opens2", "Ecart Open", "Close s1", "Close s2", "Ecart close", "High s1", "High s2", "Ecart high", "Low s1", "Low s2", "Ecart Low", "Vol s1", "Vol s2","Ecart Vol", "mm230", "Ecart mm230", "Split")
+  write.csv(newTable, file=paste0("C:/Users/lcohe/Documents/benetinTechnologies/comparedData/",dataset2_merged,'.csv'))
+  rm(dataset2_temporay,same.date,l, l2,newTable)
+}
+
+
+setwd("C:/Users/lcohe/Documents/benetinTechnologies/comparedData")
+stockListFinal <- list.files()
+stockListFinal=as.character(lapply(1:length(stockListFinal), function(i) gsub(".csv", "",stockListFinal[i])))
+
+i=0
+for (stockFinal in stockListFinal)
+{
+  newStockFinal=read.csv(paste0("C:/Users/lcohe/Documents/benetinTechnologies/comparedData/",stockFinal,'.csv'), header=TRUE, sep=",")
+  newStockFinal=newStockFinal[!duplicated(newStockFinal$Date),]
+  l=length(newStockFinal[,1])
+  if (l > 230) {
+    openBIS=newStockFinal$Opens2
+   for (j in 1:(l-230-1)) {
+     x.barre=mean(openBIS[j:(j+230-1)])
+     xmoinsx.barre=(newStockFinal$Opens2[j:(j+230-1)] - x.barre)^2
+     mm230=sqrt(sum(xmoinsx.barre)/230)
+     newStockFinal$mm230[j+230+1]=mm230
+     rm(x.barre,xmoinsx.barre,mm230)
+   } 
+  }
+  write.csv(newStockFinal, file=paste0("C:/Users/lcohe/Documents/benetinTechnologies/dossierFinalAntoine/",stockFinal,'.csv'))
+  print(i/length(stockListFinal))
+  i=i+1
+  rm(l, newStockFinal, openBIS)
+}
